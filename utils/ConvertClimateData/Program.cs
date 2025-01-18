@@ -119,12 +119,12 @@ internal class Program
 
         foreach (var (date, record) in data)
         {
-            writer.WriteLine($"{record.Year},{record.Month},{record.Day},Tmax,{record.MinTemp}");
+            writer.WriteLine($"{record.Year},{record.Month},{record.Day},Tmin,{record.MinTemp}");
         }
 
         foreach (var (date, record) in data)
         {
-            writer.WriteLine($"{record.Year},{record.Month},{record.Day},Tmin,{record.MaxTemp}");
+            writer.WriteLine($"{record.Year},{record.Month},{record.Day},Tmax,{record.MaxTemp}");
         }
 
         foreach (var (date, record) in data)
