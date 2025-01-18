@@ -16,8 +16,7 @@
 
 AgentToManagementArea
 >> The table establishes a one-to-one relationship between agent(s) and management area(s).
->> -----     ----------
->> Agent     Management
->>           area 
->> -----     ----------
-   FM1       1
+>> -------  -----------------  -----------------------  ------------
+>> Agent    Management Area    Site Selection Method    Agent Mode
+>> -------  -----------------  -----------------------  ------------
+   FM1      1                  RandomWalk               2
