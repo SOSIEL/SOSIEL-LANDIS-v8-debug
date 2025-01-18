@@ -1,10 +1,16 @@
+# Logs
 *.log
 *.log.csv
 *.log.txt
 *-log.csv
 *-log.txt
+
+# Output directories
 biomass-succession/
 DFFS-output/
 fire/
 harvest/
 Metadata/
+
+# Obsolete data files
+LANDISv7-Malheur_Historical_Climate_Maurer_1990-2010.csv
