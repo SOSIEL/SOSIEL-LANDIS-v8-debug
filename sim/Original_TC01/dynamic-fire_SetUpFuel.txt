@@ -10,10 +10,10 @@ Timestep  10
    brdlsens   	1.00
    brdlrslt	1.00
 
-
 HardwoodMaximum 60
 
-DeadFirMaxAge 15 <<not using the BDA extension, so this does not apply
+>> not using the BDA extension, so this does not apply
+DeadFirMaxAge 15
 
 FuelTypes
 
@@ -22,7 +22,7 @@ FuelTypes
 >> Fuel Type  BaseFuel  		Age Range	Species
 >> ---------  --------     		---------	----------
       1		Conifer			0 to 70		confsens -confrslt -brdlsens -brdlrslt	<< young fire-sensitive conifer
-      2		Conifer			780 to 200	confsens -confrslt -brdlsens -brdlrslt  << old fire-sensitive conifer
+      2		Conifer			200 to 780	confsens -confrslt -brdlsens -brdlrslt  << old fire-sensitive conifer
       3 	Conifer			0 to 70		confrslt -confsens -brdlsens -brdlrslt 	<< young fire-resilient conifer
       4		Conifer			80 to 350	confrslt -confsens -brdlsens -brdlrslt 	<< old fire-resilient conifer
       5 	Deciduous		0 to 80		brdlsens -confsens -confrslt -brdlrslt  << young fire-sensitive deciduous
@@ -42,9 +42,6 @@ DisturbanceConversionTable
 
 	12	20		MM1_DO8 MM1_DO9 	<<harvest prescriptions with at least 80% biomass removed
 
-
-
 MapFileNames		fire/FuelType-{timestep}.img
 PctConiferFileName	fire/PctConifer-{timestep}.img
 PctDeadFirFileName	fire/PctDeadFir-{timestep}.img
-

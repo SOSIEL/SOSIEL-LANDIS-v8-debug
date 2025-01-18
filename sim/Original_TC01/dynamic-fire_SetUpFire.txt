@@ -6,6 +6,8 @@ Timestep  10
 >> FIRE INPUTS
 >>----------------------------------------
 
+Species_CSV_File dynamic-fire-species.csv
+
 EventSizeType	size_based  		<<'size-based' or 'duration_based'
 
 
