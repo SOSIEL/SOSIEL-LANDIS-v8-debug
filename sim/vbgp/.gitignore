@@ -1,0 +1,10 @@
+*.log
+*.log.csv
+*.log.txt
+*-log.csv
+*-log.txt
+biomass-succession/
+DFFS-output/
+fire/
+harvest/
+Metadata/
