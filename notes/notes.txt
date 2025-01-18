@@ -1,30 +1,85 @@
+Well, let's start over then.
+
+I'm running LANDIS on Windows 10.
+
+I have Visual Studio 2022 installed on my machine.
+I've updated it to the most recent release, so as result I assume I should have the most recent .NET 8 runtime,
+which is a pre-requisite to LANDIS v8.
+
+Then, I've intalled LANDIS v8 and 4 extensions using official installers.
+Here's my extensions.xml:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<ExtensionDataset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Extensions>
+    <Extension Name="Biomass Succession" Version="7.0.0">
+      <Type>succession</Type>
+      <Assembly>Landis.Extension.Succession.Biomass-v7</Assembly>
+      <Class>Landis.Extension.Succession.Biomass.PlugIn</Class>
+      <Description>Succession with biomass cohorts</Description>
+    </Extension>
+    <Extension Name="Dynamic Fire System" Version="4.0">
+      <Type>disturbance:fire</Type>
+      <Assembly>Landis.Extension.DynamicFire-v4</Assembly>
+      <Class>Landis.Extension.DynamicFire.PlugIn</Class>
+      <Description>Dynamic Fire System</Description>
+    </Extension>
+    <Extension Name="Dynamic Fuel System" Version="4.0">
+      <Type>disturbance:fuels</Type>
+      <Assembly>Landis.Extension.DynamicFuels-v4</Assembly>
+      <Class>Landis.Extension.DynamicFuels.PlugIn</Class>
+      <Description>Dynamic Fuel assignment extension</Description>
+    </Extension>
+    <Extension Name="SOSIEL Harvest" Version="2.0">
+      <Type>disturbance:harvest</Type>
+      <Assembly>Landis.Extension.SOSIELHarvest-v2</Assembly>
+      <Class>Landis.Extension.SOSIELHarvest.PlugIn</Class>
+      <Description>SOSIEL Harvesting for biomass cohorts</Description>
+    </Extension>
+  </Extensions>
+</ExtensionDataset>
+```
+
+Then, I've tried to run my simulation.
+I've been getting the follwing error:
+
+```
 Loading Biomass Succession extension ...
 Error while loading the plug-in:
   Cannot get the data type that implements the plug-in:
     Data type:  Landis.Extension.Succession.Biomass.PlugIn,Landis.Extension.Succession.Biomass-v7
     Error:      No data type with that name is installed.
+```
 
-============================================
+I've fixed this by changing class Loader in the Library-Utilities as follows:
 
-I've added following to the class Loader:
+```csharp
+using System;
+using System.Runtime.Loader;
 
+// ...
+
+    public static class Loader
+    {
         // See https://stackoverflow.com/a/44139005/1540501
 
         static Loader()
         {
-            AssemblyLoadContext.Default.Resolving += OnAssemblyLoadContextResolving;
+            AssemblyLoadContext.Default.Resolving += AssemblyLoadContext_Resolving;
         }
 
         //---------------------------------------------------------------------
 
-        private static Assembly OnAssemblyLoadContextResolving(AssemblyLoadContext context, AssemblyName assemblyName)
+        private static Assembly AssemblyLoadContext_Resolving(AssemblyLoadContext context, AssemblyName assemblyName)
         {
-            Console.WriteLine($"Loading assembly: {assemblyName.FullName}");
+            Console.WriteLine($"Attempting to load assembly: {assemblyName.FullName}");
             string assemblyPath = Path.Combine(GetExtensionsDirectoryPath(), assemblyName.Name + ".dll");
             try
             {
                 var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
-                Console.WriteLine($"Loaded from extensions folder: [{assembly.FullName}] as [{assemblyName.FullName}]");
+                Console.WriteLine("Loaded assembly from the \"extensions\" directory:");
+                Console.WriteLine($"[{assembly.FullName}] as [{assemblyName.FullName}]");
                 return assembly;
             }
             catch
@@ -44,16 +99,67 @@ I've added following to the class Loader:
 
         //---------------------------------------------------------------------
 
+        /// <summary>
+        /// Loads a plug-in.
+        /// </summary>
+        /// <param name="T">
+        /// The plug-in's interface.
+        /// </param>
+        /// <param name="info">
+        /// Information about the plug-in to be loaded.
+        /// </param>
+        public static T Load<T>(IInfo info)
+        {
+            if (string.IsNullOrEmpty(info.ImplementationName))
+                throw LoadException(info,
+                                    "The plug-in has no implementation associated with it.");
 
+            string[] implementationSplit = info.ImplementationName.Split(',');
+            string pluginTypeName = implementationSplit[0];
+            string assemblyName = implementationSplit[1];
+            string assemblyPath = Path.Combine(GetExtensionsDirectoryPath(), assemblyName + ".dll");
+            var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+            if (assembly == null) {
+                throw LoadException(info,
+                                    "Cannot load the assembly that implements the plug-in:",
+                                    "  Assembly path:  " + assemblyPath,
+                                    "  Error:          The assembly is null.");
+            }
 
+            // This ensures that the assembly is REALLY loaded
+            var types = assembly.GetTypes();
+            Console.WriteLine($"Note: {assemblyName}: {types.Length} types");
 
-Loading succession extension 'Biomass Succession' ...
-Loading assembly: Landis.Library.UniversalCohorts-v1, Version=1.0.1.0, Culture=neutral, PublicKeyToken=null
-Loaded from extensions folder: [Landis.Library.UniversalCohorts-v1, Version=2.2.0.0, Culture=neutral, PublicKeyToken=null] as [Landis.Library.UniversalCohorts-v1, Version=1.0.1.0, Culture=neutral, PublicKeyToken=null]
-Loading assembly: Landis.Library.Succession-v9, Version=9.0.1.0, Culture=neutral, PublicKeyToken=null
-Loaded from extensions folder: [Landis.Library.Succession-v9, Version=9.0.1.0, Culture=neutral, PublicKeyToken=null] as [Landis.Library.Succession-v9, Version=9.0.1.0, Culture=neutral, PublicKeyToken=null]
-Loading assembly: Landis.Library.Parameters-v2, Version=2.0.0.0, Culture=neutral, PublicKeyToken=null
-Loaded from extensions folder: [Landis.Library.Parameters-v2, Version=2.0.0.0, Culture=neutral, PublicKeyToken=null] as [Landis.Library.Parameters-v2, Version=2.0.0.0, Culture=neutral, PublicKeyToken=null]
+            System.Type plugInImplType;
+            try {
+                plugInImplType = assembly.GetType(pluginTypeName);
+            }
+            catch (System.Exception exc) {
+                throw LoadException(info,
+                                    "Cannot get the data type that implements the plug-in:",
+                                    "  Assembly path:  " + assemblyPath,
+                                    "  Data type:  " + info.ImplementationName,
+                                    "  Error:      " + exc.Message);
+            }
+
+            if (plugInImplType == null) {
+                throw LoadException(info,
+                                    "Cannot get the data type that implements the plug-in:",
+                                    "  Assembly path:  " + assemblyPath,
+                                    "  Data type:  " + info.ImplementationName,
+                                    "  Error:      No data type with that name is installed.");
+            }
+
+            return Load<T>(info.Name, plugInImplType);
+        }
+
+        // ... the rest of the code int his class remains unchanged
+    }
+```
+
+This led me to another error:
+
+```
 Internal error occurred within the program:
   Unable to load one or more of the requested types.
 Method 'ComputeChange' in type 'Landis.Extension.Succession.Biomass.CohortBiomass' from assembly 'Landis.Extension.Succession.Biomass-v7, Version=7.0.2.0, Culture=neutral, PublicKeyToken=null' does not have an implementation.
@@ -64,11 +170,13 @@ Stack trace:
    at Landis.Utilities.PlugIns.Loader.Load[T](IInfo info)
    at Landis.Model.Run(String scenarioPath, IUserInterface ui)
    at Landis.App.Main(String[] args) in C:\GitHub\Core-Model-v8\Tool-Console\src\App.cs:line 99
-   
-This is integersting. I've decided to dig more into the "Biomass Succession" extension.
-After running its support_libs_download.ps1 I've got correct version of the Landis.Library.UniversalCohorts-v1!
+```
 
-CodeMerx decompoler on it:
+I've decided to dig deeper into the "Biomass Succession" extension.
+After running its support_libs_download.ps1 I've notice that it have brought the correct version of the Landis.Library.UniversalCohorts-v1.dll:
+
+```csharp
+// CodeMerx Decompiler output:
 [assembly: AssemblyCompany("Landis-II-Foundation")]
 [assembly: AssemblyConfiguration("Release")]
 [assembly: AssemblyCopyright("LANDIS-II Foundation")]
@@ -83,6 +191,44 @@ CodeMerx decompoler on it:
 [assembly: Debuggable(DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
 [assembly: NeutralResourcesLanguage("English")]
 [assembly: RuntimeCompatibility(WrapNonExceptionThrows=true)]
-[assembly: TargetFramework(".NETStandard,Version=v2.0", FrameworkDisplayName=".NET Standard 2.0")] 
+[assembly: TargetFramework(".NETStandard,Version=v2.0", FrameworkDisplayName=".NET Standard 2.0")]
+```
 
-After putting it into the "extensions" directory, the magic has happened and biomass extension has finally been loaded.
+while originally installed by extensions installer version was:
+
+```csharp
+// CodeMerx Decompiler output:
+[assembly: AssemblyCompany("Landis-II-Foundation")]
+[assembly: AssemblyConfiguration("Release")]
+[assembly: AssemblyCopyright("LANDIS-II Foundation")]
+[assembly: AssemblyDescription("Base Cohort Library for LANDIS-II")]
+[assembly: AssemblyFileVersion("2.2.0")]
+[assembly: AssemblyInformationalVersion("2.2+8047d1b845d9f806db0dc74bf60011f124017dea")]
+[assembly: AssemblyMetadata("RepositoryUrl", "https://github.com/LANDIS-II-Foundation/Library-Base-Cohort")]
+[assembly: AssemblyProduct("Universal Cohort Library")]
+[assembly: AssemblyTitle("Landis.Library.Cohorts-v2")]
+[assembly: AssemblyVersion("2.2.0.0")]
+[assembly: CompilationRelaxations(8)]
+[assembly: Debuggable(DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: NeutralResourcesLanguage("English")]
+[assembly: RuntimeCompatibility(WrapNonExceptionThrows=true)]
+[assembly: TargetFramework(".NETStandard,Version=v2.0", FrameworkDisplayName=".NET Standard 2.0")]
+```
+
+which was the reason of the issue.
+
+After putting it into the "extensions" directory of the LANDIS v8, the biomass "Biomass Succession" extension has finally successfully loaded.
+
+After some struggling with changed formats of various config files, so far,
+I'm getting the following strange error message:
+
+```
+Loaded assembly from the "extensions" directory:
+[Landis.Library.UniversalCohorts-v1, Version=1.0.1.0, Culture=neutral, PublicKeyToken=null] as [Landis.Library.UniversalCohorts-v1, Version=2.0.3.0, Culture=neutral, PublicKeyToken=null]
+The data type of site variable "Succession.UniversalCohorts" is Landis.Library.UniversalCohorts.SiteCohorts, not Landis.Library.UniversalCohorts.ISiteCohorts
+```
+
+So now something requires newer version of Landis.Library.UniversalCohorts-v1.
+The version required is indicated: Version=2.0.3.0
+
+Please help me to resolve this ".NET DLL hell".
