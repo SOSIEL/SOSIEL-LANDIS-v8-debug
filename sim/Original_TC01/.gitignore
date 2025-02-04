@@ -11,6 +11,9 @@ DFFS-output/
 fire/
 harvest/
 Metadata/
+biomass/
+biomass_by_age/
+biomass-reclass/
 
 # Obsolete data files
 LANDISv7-Malheur_Historical_Climate_Maurer_1990-2010.csv

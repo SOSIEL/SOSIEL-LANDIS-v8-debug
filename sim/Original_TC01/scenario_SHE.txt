@@ -57,11 +57,11 @@
 >> OUTPUT EXTENSONS
 >> ----------------------
 
->> 	Output Extension		Initialization File
->> 	----------------		-------------------
->>   "Output Biomass"			output_Biomass.txt		
->>   "Output Biomass Reclass"    	output_BiomassReclass.txt	
->>   "Output Biomass-by-Age"		biomass_by_age.txt
+>> Output Extension		      Initialization File
+>> ----------------		      -------------------
+   "Output Biomass"			   output_Biomass.txt		
+   "Output Biomass Reclass"	output_BiomassReclass.txt	
+   "Output Biomass-by-Age"		biomass_by_age.txt
 
 
 >> RandomNumberSeed  1234  << optional parameter; uncomment for reproducibilty tests
